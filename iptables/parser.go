@@ -89,6 +89,8 @@ func (p *parser) handleNewChain(line string) {
 		Packets: packets,
 		Bytes:   bytes,
 	}
+
+	// check to see if chain exists in disable.chain (var disableChains) rule
 	p.currentTable[name] = chain
 }
 
@@ -110,8 +112,8 @@ func (p *parser) handleRule(line string) {
 	r := Rule{
 		Packets: subParser.packets,
 		Bytes:   subParser.bytes,
-		Rule:    strings.Join(subParser.flags, " "),
 	}
+	r.populateFlags(subParser.flags)
 	chain := p.currentTable[subParser.chain]
 	chain.Rules = append(chain.Rules, r)
 	p.currentTable[subParser.chain] = chain

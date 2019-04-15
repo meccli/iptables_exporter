@@ -14,7 +14,12 @@
 
 package iptables
 
-import "strings"
+import (
+	"os/user"
+	"regexp"
+	"strconv"
+	"strings"
+)
 
 type ruleParser struct {
 	packets       uint64
@@ -25,6 +30,17 @@ type ruleParser struct {
 	chain         string
 	flags         []string
 }
+
+var (
+	destinationRegexp     = regexp.MustCompile(`^d\s.*`)
+	destinationPortRegexp = regexp.MustCompile(`^dport\s.*`) //DestinationPort
+	matchRegexp           = regexp.MustCompile(`^m\s.*`)     // Match
+	protocolRegexp        = regexp.MustCompile(`^p\s.*`)     //Protocol
+	sourceRegexp          = regexp.MustCompile(`^s\s.*`)
+	sourcePortRegexp      = regexp.MustCompile(`^sport\s.*`) //SourcePort
+	targetRegexp          = regexp.MustCompile(`^j\s.*`)     //Target
+	userIDRegexp          = regexp.MustCompile(`^owner\s.*`) // UID
+)
 
 func (p *ruleParser) flush() {
 	switch p.current {
@@ -53,4 +69,38 @@ func (p *ruleParser) handleToken(token string) {
 		return
 	}
 	p.currentValues = append(p.currentValues, token)
+}
+
+func (r *Rule) populateFlags(flags []string) {
+	parsedFlags := strings.Split(strings.Join(flags, " "), "-")
+	for i := range parsedFlags {
+		switch {
+		case destinationRegexp.MatchString(parsedFlags[i]):
+			r.Destination = strings.Split(parsedFlags[i], " ")[1]
+		case destinationPortRegexp.MatchString(parsedFlags[i]):
+			r.DestinationPort, _ = strconv.Atoi(strings.Split(parsedFlags[i], " ")[1])
+		case matchRegexp.MatchString(parsedFlags[i]):
+			r.Match = strings.Split(parsedFlags[i], " ")[1]
+		case protocolRegexp.MatchString(parsedFlags[i]):
+			r.Protocol = strings.Split(parsedFlags[i], " ")[1]
+		case sourceRegexp.MatchString(parsedFlags[i]):
+			r.Source = strings.Split(parsedFlags[i], " ")[1]
+		case sourcePortRegexp.MatchString(parsedFlags[i]):
+			r.SourcePort, _ = strconv.Atoi(strings.Split(parsedFlags[i], " ")[1])
+		case targetRegexp.MatchString(parsedFlags[i]):
+			r.Target = strings.Split(parsedFlags[i], " ")[1]
+		case userIDRegexp.MatchString(parsedFlags[i]):
+			r.UID = strings.Split(parsedFlags[i], " ")[1]
+
+			user, _ := user.LookupId(r.UID)
+			r.Username = user.Username
+		}
+	}
+
+	if r.Destination == "" {
+		r.Destination = "0.0.0.0/32"
+	}
+	if r.Source == "" {
+		r.Source = "0.0.0.0/32"
+	}
 }

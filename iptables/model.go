@@ -26,7 +26,15 @@ type Chain struct {
 }
 
 type Rule struct {
-	Packets uint64
-	Bytes   uint64
-	Rule    string
+	Destination     string
+	DestinationPort int
+	Bytes           uint64
+	Match           string // tcp, owner
+	Packets         uint64
+	Protocol        string // tcp/udp
+	Source          string
+	SourcePort      int
+	Target          string // ACCEPT, DROP
+	UID             string
+	Username        string
 }

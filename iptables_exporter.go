@@ -17,19 +17,23 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/jbkc85/iptables_exporter/iptables"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"github.com/prometheus/common/version"
-	"github.com/retailnext/iptables_exporter/iptables"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 type collector struct{}
 
 var (
+	rulePattern = []string{"table", "chain", "destination", "dport", "source", "sport", "target", "protocol", "match", "userid", "username"}
+
 	scrapeDurationDesc = prometheus.NewDesc(
 		"iptables_scrape_duration_seconds",
 		"iptables_exporter: Duration of scraping iptables.",
@@ -61,14 +65,14 @@ var (
 	ruleBytesDesc = prometheus.NewDesc(
 		"iptables_rule_bytes_total",
 		"iptables_exporter: Total bytes matching a rule.",
-		[]string{"table", "chain", "rule"},
+		rulePattern,
 		nil,
 	)
 
 	rulePacketsDesc = prometheus.NewDesc(
 		"iptables_rule_packets_total",
 		"iptables_exporter: Total packets matching a rule.",
-		[]string{"table", "chain", "rule"},
+		rulePattern,
 		nil,
 	)
 )
@@ -99,51 +103,125 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 
 	for tableName, table := range tables {
 		for chainName, chain := range table {
-			metricChan <- prometheus.MustNewConstMetric(
-				defaultPacketsDesc,
-				prometheus.CounterValue,
-				float64(chain.Packets),
-				tableName,
-				chainName,
-				chain.Policy,
-			)
-			metricChan <- prometheus.MustNewConstMetric(
-				defaultBytesDesc,
-				prometheus.CounterValue,
-				float64(chain.Bytes),
-				tableName,
-				chainName,
-				chain.Policy,
-			)
-			for _, rule := range chain.Rules {
+			if *enableChains != "" {
+				if strings.Contains(*enableChains, chainName) {
+					metricChan <- prometheus.MustNewConstMetric(
+						defaultPacketsDesc,
+						prometheus.CounterValue,
+						float64(chain.Packets),
+						tableName,
+						chainName,
+						chain.Policy,
+					)
+					metricChan <- prometheus.MustNewConstMetric(
+						defaultBytesDesc,
+						prometheus.CounterValue,
+						float64(chain.Bytes),
+						tableName,
+						chainName,
+						chain.Policy,
+					)
+					for _, rule := range chain.Rules {
+						metricChan <- prometheus.MustNewConstMetric(
+							rulePacketsDesc,
+							prometheus.CounterValue,
+							float64(rule.Packets),
+							tableName,
+							chainName,
+							rule.Destination,
+							strconv.Itoa(rule.DestinationPort),
+							rule.Source,
+							strconv.Itoa(rule.SourcePort),
+							rule.Target,
+							rule.Protocol,
+							rule.Match,
+							rule.UID,
+							rule.Username,
+						)
+						metricChan <- prometheus.MustNewConstMetric(
+							ruleBytesDesc,
+							prometheus.CounterValue,
+							float64(rule.Bytes),
+							tableName,
+							chainName,
+							rule.Destination,
+							strconv.Itoa(rule.DestinationPort),
+							rule.Source,
+							strconv.Itoa(rule.SourcePort),
+							rule.Target,
+							rule.Protocol,
+							rule.Match,
+							rule.UID,
+							rule.Username,
+						)
+					}
+				} else {
+					continue
+				}
+			} else {
 				metricChan <- prometheus.MustNewConstMetric(
-					rulePacketsDesc,
+					defaultPacketsDesc,
 					prometheus.CounterValue,
-					float64(rule.Packets),
+					float64(chain.Packets),
 					tableName,
 					chainName,
-					rule.Rule,
+					chain.Policy,
 				)
 				metricChan <- prometheus.MustNewConstMetric(
-					ruleBytesDesc,
+					defaultBytesDesc,
 					prometheus.CounterValue,
-					float64(rule.Bytes),
+					float64(chain.Bytes),
 					tableName,
 					chainName,
-					rule.Rule,
+					chain.Policy,
 				)
+				for _, rule := range chain.Rules {
+					metricChan <- prometheus.MustNewConstMetric(
+						rulePacketsDesc,
+						prometheus.CounterValue,
+						float64(rule.Packets),
+						tableName,
+						chainName,
+						rule.Destination,
+						strconv.Itoa(rule.DestinationPort),
+						rule.Source,
+						strconv.Itoa(rule.SourcePort),
+						rule.Target,
+						rule.Protocol,
+						rule.Match,
+						rule.UID,
+						rule.Username,
+					)
+					metricChan <- prometheus.MustNewConstMetric(
+						ruleBytesDesc,
+						prometheus.CounterValue,
+						float64(rule.Bytes),
+						tableName,
+						chainName,
+						rule.Destination,
+						strconv.Itoa(rule.DestinationPort),
+						rule.Source,
+						strconv.Itoa(rule.SourcePort),
+						rule.Target,
+						rule.Protocol,
+						rule.Match,
+						rule.UID,
+						rule.Username,
+					)
+				}
 			}
 		}
 	}
 }
 
+var (
+	enableChains  = kingpin.Flag("chain.enable", "Disable given chain Metrics in IPTables").Default("").String()
+	listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default(":9455").String()
+	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
+)
+
 func main() {
 	// Adapted from github.com/prometheus/node_exporter
-
-	var (
-		listenAddress = kingpin.Flag("web.listen-address", "Address on which to expose metrics and web interface.").Default(":9455").String()
-		metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose metrics.").Default("/metrics").String()
-	)
 
 	log.AddFlags(kingpin.CommandLine)
 	kingpin.Version(version.Print("iptables_exporter"))
