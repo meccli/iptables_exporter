@@ -15,7 +15,6 @@
 package iptables
 
 import (
-	"os/user"
 	"regexp"
 	"strconv"
 	"strings"
@@ -33,13 +32,12 @@ type ruleParser struct {
 
 var (
 	destinationRegexp     = regexp.MustCompile(`^d\s.*`)
-	destinationPortRegexp = regexp.MustCompile(`^dport\s.*`) //DestinationPort
+	destinationPortRegexp = regexp.MustCompile(`^dports\s.*`) //DestinationPort
 	matchRegexp           = regexp.MustCompile(`^m\s.*`)     // Match
 	protocolRegexp        = regexp.MustCompile(`^p\s.*`)     //Protocol
 	sourceRegexp          = regexp.MustCompile(`^s\s.*`)
 	sourcePortRegexp      = regexp.MustCompile(`^sport\s.*`) //SourcePort
 	targetRegexp          = regexp.MustCompile(`^j\s.*`)     //Target
-	userIDRegexp          = regexp.MustCompile(`^owner\s.*`) // UID
 )
 
 func (p *ruleParser) flush() {
@@ -89,11 +87,6 @@ func (r *Rule) populateFlags(flags []string) {
 			r.SourcePort, _ = strconv.Atoi(strings.Split(parsedFlags[i], " ")[1])
 		case targetRegexp.MatchString(parsedFlags[i]):
 			r.Target = strings.Split(parsedFlags[i], " ")[1]
-		case userIDRegexp.MatchString(parsedFlags[i]):
-			r.UID = strings.Split(parsedFlags[i], " ")[1]
-
-			user, _ := user.LookupId(r.UID)
-			r.Username = user.Username
 		}
 	}
 
