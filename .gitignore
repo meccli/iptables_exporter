@@ -5,3 +5,7 @@
 /.release
 /.tarballs
 /iptables_exporter
+/iptables/chef.iptables-save
+/iptables/server.iptables-save
+/go.mod
+/go.sum

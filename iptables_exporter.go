@@ -21,7 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jbkc85/iptables_exporter/iptables"
+	"test/iptables"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -32,7 +33,7 @@ import (
 type collector struct{}
 
 var (
-	rulePattern = []string{"table", "chain", "destination", "dport", "source", "sport", "target", "protocol", "match", "userid", "username"}
+	rulePattern = []string{"table", "chain", "destination", "dport", "source", "sport", "target", "protocol", "match", "chefSync"}
 
 	scrapeDurationDesc = prometheus.NewDesc(
 		"iptables_scrape_duration_seconds",
@@ -135,8 +136,7 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 							rule.Target,
 							rule.Protocol,
 							rule.Match,
-							rule.UID,
-							rule.Username,
+							rule.ChefSync,
 						)
 						metricChan <- prometheus.MustNewConstMetric(
 							ruleBytesDesc,
@@ -151,8 +151,7 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 							rule.Target,
 							rule.Protocol,
 							rule.Match,
-							rule.UID,
-							rule.Username,
+							rule.ChefSync,
 						)
 					}
 				} else {
@@ -189,8 +188,7 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 						rule.Target,
 						rule.Protocol,
 						rule.Match,
-						rule.UID,
-						rule.Username,
+						rule.ChefSync,
 					)
 					metricChan <- prometheus.MustNewConstMetric(
 						ruleBytesDesc,
@@ -205,8 +203,7 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 						rule.Target,
 						rule.Protocol,
 						rule.Match,
-						rule.UID,
-						rule.Username,
+						rule.ChefSync,
 					)
 				}
 			}

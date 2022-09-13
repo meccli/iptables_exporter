@@ -15,7 +15,6 @@
 package iptables
 
 import (
-	"os/user"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,15 +30,21 @@ type ruleParser struct {
 	flags         []string
 }
 
+type ruleChefParser struct {
+	current       string
+	currentValues []string
+	chain         string
+	flags         []string
+}
+
 var (
 	destinationRegexp     = regexp.MustCompile(`^d\s.*`)
-	destinationPortRegexp = regexp.MustCompile(`^dport\s.*`) //DestinationPort
-	matchRegexp           = regexp.MustCompile(`^m\s.*`)     // Match
-	protocolRegexp        = regexp.MustCompile(`^p\s.*`)     //Protocol
+	destinationPortRegexp = regexp.MustCompile(`^dports\s.*`)  //DestinationPort
+	commentRegexp         = regexp.MustCompile(`^comment\s.*`) // Match
+	protocolRegexp        = regexp.MustCompile(`^p\s.*`)       //Protocol
 	sourceRegexp          = regexp.MustCompile(`^s\s.*`)
 	sourcePortRegexp      = regexp.MustCompile(`^sport\s.*`) //SourcePort
 	targetRegexp          = regexp.MustCompile(`^j\s.*`)     //Target
-	userIDRegexp          = regexp.MustCompile(`^owner\s.*`) // UID
 )
 
 func (p *ruleParser) flush() {
@@ -56,6 +61,28 @@ func (p *ruleParser) flush() {
 	}
 	p.current = ""
 	p.currentValues = nil
+}
+
+func (p *ruleChefParser) flush() {
+	switch p.current {
+	case "":
+		// Ignore
+	case "-A", "--append":
+		if len(p.currentValues) > 0 {
+			p.chain = p.currentValues[0]
+		}
+	}
+	p.current = ""
+	p.currentValues = nil
+}
+
+func (p *ruleChefParser) handleToken(token string) {
+	if strings.HasPrefix(token, "-") {
+		p.flush()
+		p.current = token
+		return
+	}
+	p.currentValues = append(p.currentValues, token)
 }
 
 func (p *ruleParser) handleToken(token string) {
@@ -79,7 +106,7 @@ func (r *Rule) populateFlags(flags []string) {
 			r.Destination = strings.Split(parsedFlags[i], " ")[1]
 		case destinationPortRegexp.MatchString(parsedFlags[i]):
 			r.DestinationPort, _ = strconv.Atoi(strings.Split(parsedFlags[i], " ")[1])
-		case matchRegexp.MatchString(parsedFlags[i]):
+		case commentRegexp.MatchString(parsedFlags[i]):
 			r.Match = strings.Split(parsedFlags[i], " ")[1]
 		case protocolRegexp.MatchString(parsedFlags[i]):
 			r.Protocol = strings.Split(parsedFlags[i], " ")[1]
@@ -89,11 +116,8 @@ func (r *Rule) populateFlags(flags []string) {
 			r.SourcePort, _ = strconv.Atoi(strings.Split(parsedFlags[i], " ")[1])
 		case targetRegexp.MatchString(parsedFlags[i]):
 			r.Target = strings.Split(parsedFlags[i], " ")[1]
-		case userIDRegexp.MatchString(parsedFlags[i]):
-			r.UID = strings.Split(parsedFlags[i], " ")[1]
-
-			user, _ := user.LookupId(r.UID)
-			r.Username = user.Username
+		case targetRegexp.MatchString(parsedFlags[i]):
+			r.ChefSync = strings.Split(parsedFlags[i], " ")[1]
 		}
 	}
 

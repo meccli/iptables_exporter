@@ -14,19 +14,40 @@
 
 package iptables
 
-import "os/exec"
+import (
+	"fmt"
+	"os"
+
+	//	"os/exec"
+	"reflect"
+)
 
 func GetTables() (Tables, error) {
-	cmd := exec.Command("iptables-save", "-c")
-	pipe, err := cmd.StdoutPipe()
+	//	cmd := exec.Command("iptables-save", "-c")
+	//	pipe, err := cmd.StdoutPipe()
+	pipe, err := os.Open("./iptables/server.iptables-save")
 	if err != nil {
 		return nil, err
 	}
+
+	file, err := os.Open("./iptables/chef.iptables-save")
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+	defer pipe.Close()
 
 	resultCh := make(chan struct {
 		Tables
 		error
 	})
+
+	resultChChef := make(chan struct {
+		Tables
+		error
+	})
+
 	go func() {
 		result, parseErr := ParseIptablesSave(pipe)
 		resultCh <- struct {
@@ -35,13 +56,23 @@ func GetTables() (Tables, error) {
 		}{result, parseErr}
 	}()
 
-	err = cmd.Start()
+	go func() {
+		result, parseErr := ParseIptablesFile(file)
+		resultChChef <- struct {
+			Tables
+			error
+		}{result, parseErr}
+	}()
+
+	//	err = cmd.Start()
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Println(reflect.DeepEqual(resultCh, resultChChef))
+
 	r := <-resultCh
-	err = cmd.Wait()
+	//	err = cmd.Wait()
 	if err != nil {
 		return nil, err
 	}

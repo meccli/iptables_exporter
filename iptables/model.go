@@ -35,6 +35,5 @@ type Rule struct {
 	Source          string
 	SourcePort      int
 	Target          string // ACCEPT, DROP
-	UID             string
-	Username        string
+	ChefSync        string // is rule from chef?
 }
