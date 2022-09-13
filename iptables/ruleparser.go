@@ -33,7 +33,7 @@ type ruleParser struct {
 var (
 	destinationRegexp     = regexp.MustCompile(`^d\s.*`)
 	destinationPortRegexp = regexp.MustCompile(`^dports\s.*`) //DestinationPort
-	matchRegexp           = regexp.MustCompile(`^m\s.*`)     // Match
+	commentRegexp         = regexp.MustCompile(`^comment\s.*`)     // Match
 	protocolRegexp        = regexp.MustCompile(`^p\s.*`)     //Protocol
 	sourceRegexp          = regexp.MustCompile(`^s\s.*`)
 	sourcePortRegexp      = regexp.MustCompile(`^sport\s.*`) //SourcePort
@@ -77,7 +77,7 @@ func (r *Rule) populateFlags(flags []string) {
 			r.Destination = strings.Split(parsedFlags[i], " ")[1]
 		case destinationPortRegexp.MatchString(parsedFlags[i]):
 			r.DestinationPort, _ = strconv.Atoi(strings.Split(parsedFlags[i], " ")[1])
-		case matchRegexp.MatchString(parsedFlags[i]):
+		case commentRegexp.MatchString(parsedFlags[i]):
 			r.Match = strings.Split(parsedFlags[i], " ")[1]
 		case protocolRegexp.MatchString(parsedFlags[i]):
 			r.Protocol = strings.Split(parsedFlags[i], " ")[1]

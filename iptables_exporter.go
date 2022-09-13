@@ -32,7 +32,7 @@ import (
 type collector struct{}
 
 var (
-	rulePattern = []string{"table", "chain", "destination", "dport", "source", "sport", "target", "protocol", "match", "userid", "username"}
+	rulePattern = []string{"table", "chain", "destination", "dport", "source", "sport", "target", "protocol", "match"}
 
 	scrapeDurationDesc = prometheus.NewDesc(
 		"iptables_scrape_duration_seconds",
