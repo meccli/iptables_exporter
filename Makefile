@@ -78,7 +78,6 @@ tarball: promu
 	$(PROMU) tarball --prefix $(PREFIX) $(BIN_DIR)
 
 promu:
-	GOOS= GOARCH= $(GO) get -u github.com/prometheus/promu
 
 $(FIRST_GOPATH)/bin/staticcheck:
 	GOOS= GOARCH= $(GO) get -u honnef.co/go/tools/cmd/staticcheck

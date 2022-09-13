@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jbkc85/iptables_exporter/iptables"
+	"github.com/meccli/iptables_exporter/iptables"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
