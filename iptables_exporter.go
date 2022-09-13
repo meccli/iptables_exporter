@@ -135,8 +135,6 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 							rule.Target,
 							rule.Protocol,
 							rule.Match,
-							rule.UID,
-							rule.Username,
 						)
 						metricChan <- prometheus.MustNewConstMetric(
 							ruleBytesDesc,
@@ -151,8 +149,6 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 							rule.Target,
 							rule.Protocol,
 							rule.Match,
-							rule.UID,
-							rule.Username,
 						)
 					}
 				} else {
@@ -189,8 +185,6 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 						rule.Target,
 						rule.Protocol,
 						rule.Match,
-						rule.UID,
-						rule.Username,
 					)
 					metricChan <- prometheus.MustNewConstMetric(
 						ruleBytesDesc,
@@ -205,8 +199,6 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 						rule.Target,
 						rule.Protocol,
 						rule.Match,
-						rule.UID,
-						rule.Username,
 					)
 				}
 			}
