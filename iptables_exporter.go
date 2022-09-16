@@ -32,7 +32,7 @@ import (
 type collector struct{}
 
 var (
-	rulePattern = []string{"table", "chain", "destination", "dport", "source", "sport", "target", "protocol", "match"}
+	rulePattern = []string{"table", "chain", "destination", "dport", "source", "sport", "target", "protocol", "match", "chefSync"}
 
 	scrapeDurationDesc = prometheus.NewDesc(
 		"iptables_scrape_duration_seconds",
@@ -135,6 +135,7 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 							rule.Target,
 							rule.Protocol,
 							rule.Match,
+							rule.ChefSync,
 						)
 						metricChan <- prometheus.MustNewConstMetric(
 							ruleBytesDesc,
@@ -149,6 +150,7 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 							rule.Target,
 							rule.Protocol,
 							rule.Match,
+							rule.ChefSync,
 						)
 					}
 				} else {
@@ -185,6 +187,7 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 						rule.Target,
 						rule.Protocol,
 						rule.Match,
+						rule.ChefSync,
 					)
 					metricChan <- prometheus.MustNewConstMetric(
 						ruleBytesDesc,
@@ -199,6 +202,7 @@ func (c *collector) Collect(metricChan chan<- prometheus.Metric) {
 						rule.Target,
 						rule.Protocol,
 						rule.Match,
+						rule.ChefSync,
 					)
 				}
 			}

@@ -30,11 +30,18 @@ type ruleParser struct {
 	flags         []string
 }
 
+type ruleChefParser struct {
+	current       string
+	currentValues []string
+	chain         string
+	flags         []string
+}
+
 var (
 	destinationRegexp     = regexp.MustCompile(`^d\s.*`)
-	destinationPortRegexp = regexp.MustCompile(`^dports\s.*`) //DestinationPort
-	commentRegexp         = regexp.MustCompile(`^comment\s.*`)     // Match
-	protocolRegexp        = regexp.MustCompile(`^p\s.*`)     //Protocol
+	destinationPortRegexp = regexp.MustCompile(`^dports\s.*`)  //DestinationPort
+	commentRegexp         = regexp.MustCompile(`^comment\s.*`) // Match
+	protocolRegexp        = regexp.MustCompile(`^p\s.*`)       //Protocol
 	sourceRegexp          = regexp.MustCompile(`^s\s.*`)
 	sourcePortRegexp      = regexp.MustCompile(`^sport\s.*`) //SourcePort
 	targetRegexp          = regexp.MustCompile(`^j\s.*`)     //Target
@@ -54,6 +61,31 @@ func (p *ruleParser) flush() {
 	}
 	p.current = ""
 	p.currentValues = nil
+}
+
+func (p *ruleChefParser) flush() {
+	switch p.current {
+	case "":
+		// Ignore
+	case "-A", "--append":
+		if len(p.currentValues) > 0 {
+			p.chain = p.currentValues[0]
+		}
+	default:
+		p.flags = append(p.flags, p.current)
+		p.flags = append(p.flags, p.currentValues...)
+	}
+	p.current = ""
+	p.currentValues = nil
+}
+
+func (p *ruleChefParser) handleToken(token string) {
+	if strings.HasPrefix(token, "-") {
+		p.flush()
+		p.current = token
+		return
+	}
+	p.currentValues = append(p.currentValues, token)
 }
 
 func (p *ruleParser) handleToken(token string) {
@@ -87,6 +119,8 @@ func (r *Rule) populateFlags(flags []string) {
 			r.SourcePort, _ = strconv.Atoi(strings.Split(parsedFlags[i], " ")[1])
 		case targetRegexp.MatchString(parsedFlags[i]):
 			r.Target = strings.Split(parsedFlags[i], " ")[1]
+		case targetRegexp.MatchString(parsedFlags[i]):
+			r.ChefSync = strings.Split(parsedFlags[i], " ")[1]
 		}
 	}
 

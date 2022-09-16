@@ -14,7 +14,12 @@
 
 package iptables
 
-import "os/exec"
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"reflect"
+)
 
 func GetTables() (Tables, error) {
 	cmd := exec.Command("iptables-save", "-c")
@@ -23,13 +28,34 @@ func GetTables() (Tables, error) {
 		return nil, err
 	}
 
+	file, err := os.Open("/etc/iptables/rules.v4")
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
 	resultCh := make(chan struct {
 		Tables
 		error
 	})
+
+	resultChChef := make(chan struct {
+		Tables
+		error
+	})
+
 	go func() {
 		result, parseErr := ParseIptablesSave(pipe)
 		resultCh <- struct {
+			Tables
+			error
+		}{result, parseErr}
+	}()
+
+	go func() {
+		result, parseErr := ParseIptablesFile(file)
+		resultChChef <- struct {
 			Tables
 			error
 		}{result, parseErr}
@@ -39,6 +65,8 @@ func GetTables() (Tables, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println(reflect.DeepEqual(resultCh, resultChChef))
 
 	r := <-resultCh
 	err = cmd.Wait()

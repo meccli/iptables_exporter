@@ -40,6 +40,23 @@ func ParseIptablesSave(r io.Reader) (Tables, error) {
 	return parser.result, nil
 }
 
+func ParseIptablesFile(r io.Reader) (Tables, error) {
+	scanner := bufio.NewScanner(r)
+	var parser parser
+	for scanner.Scan() {
+		parser.handleChefLine(scanner.Text())
+	}
+	parser.flush()
+	err := scanner.Err()
+	if err != nil {
+		return nil, err
+	}
+	if len(parser.errors) > 0 {
+		return nil, parser.errors[0]
+	}
+	return parser.result, nil
+}
+
 type ParseError struct {
 	Message    string
 	LineNumber int
@@ -71,8 +88,8 @@ func (p *parser) flush() {
 
 func (p *parser) handleNewChain(line string) {
 	fields := strings.Fields(line)
-	if len(fields) != 3 {
-		p.errors = append(p.errors, ParseError{"expected 3 fields", p.line, line})
+	if len(fields) < 2 {
+		p.errors = append(p.errors, ParseError{"expected minimun 2 fields", p.line, line})
 		return
 	}
 	name := strings.TrimPrefix(fields[0], ":")
@@ -88,6 +105,24 @@ func (p *parser) handleNewChain(line string) {
 		Policy:  fields[1],
 		Packets: packets,
 		Bytes:   bytes,
+	}
+
+	// check to see if chain exists in disable.chain (var disableChains) rule
+	p.currentTable[name] = chain
+}
+
+func (p *parser) handleNewChefChain(line string) {
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		p.errors = append(p.errors, ParseError{"expected minimun 2 fields", p.line, line})
+		return
+	}
+	name := strings.TrimPrefix(fields[0], ":")
+	if p.currentTable == nil {
+		p.currentTable = make(map[string]Chain)
+	}
+	chain := Chain{
+		Policy:  fields[1],
 	}
 
 	// check to see if chain exists in disable.chain (var disableChains) rule
@@ -119,6 +154,47 @@ func (p *parser) handleRule(line string) {
 	p.currentTable[subParser.chain] = chain
 }
 
+func (p *parser) handleChefRule(line string) {
+	fields := strings.Fields(line)
+	var subParser ruleChefParser
+	for _, token := range fields {
+		subParser.handleToken(token)
+	}
+	subParser.flush()
+	if subParser.chain == "" {
+		p.errors = append(p.errors, ParseError{"expected -A chain ...", p.line, line})
+		return
+	}
+	chain := p.currentTable[subParser.chain]
+	p.currentTable[subParser.chain] = chain
+}
+
+func (p *parser) handleChefLine(line string) {
+	p.line++
+	line = strings.TrimSpace(line)
+	if line == "" || strings.HasPrefix(line, "#") {
+		return
+	}
+	if line == "COMMIT" {
+		p.flush()
+		return
+	}
+	if name := strings.TrimPrefix(line, "*"); name != line {
+		p.flush()
+		p.currentTableName = name
+		return
+	}
+	if strings.HasPrefix(line, ":") {
+		p.handleNewChefChain(line)
+		return
+	}
+	if strings.HasPrefix(line, "-") {
+		p.handleNewChefChain(line)
+		return
+	}
+	p.errors = append(p.errors, ParseError{"unhandled line", p.line, line})
+}
+
 func (p *parser) handleLine(line string) {
 	p.line++
 	line = strings.TrimSpace(line)
@@ -140,6 +216,10 @@ func (p *parser) handleLine(line string) {
 	}
 	if strings.HasPrefix(line, "[") {
 		p.handleRule(line)
+		return
+	}
+	if strings.HasPrefix(line, "-") {
+		p.handleChefRule(line)
 		return
 	}
 	p.errors = append(p.errors, ParseError{"unhandled line", p.line, line})

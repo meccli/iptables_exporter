@@ -35,4 +35,5 @@ type Rule struct {
 	Source          string
 	SourcePort      int
 	Target          string // ACCEPT, DROP
+	ChefSync        string // is rule from chef?
 }

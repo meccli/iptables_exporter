@@ -1,0 +1,34 @@
+# position 1
+*filter
+# position 2
+:INPUT DROP
+# position 3
+:FORWARD DROP
+# position 4
+:OUTPUT ACCEPT
+# position 5
+:DOCKER -
+# position 6
+:DOCKER-ISOLATION -
+# position 50
+-A INPUT -p tcp -m tcp -m multiport --dports 22 -m comment --comment "allow world to ssh" -j ACCEPT
+-A INPUT -m state --state RELATED,ESTABLISHED -m comment --comment "established" -j ACCEPT
+-A OUTPUT -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -p icmp -m comment --comment "allow_icmp" -j ACCEPT
+-A INPUT -p udp -m multiport --dports 30000 -m comment --comment "allow port 30000" -j ACCEPT
+-A INPUT -s 23.105.232.204/32 -p tcp -m tcp -m multiport --dports 9100 -m comment --comment "Allow TCP 9100 for prometheus-infra-01.hosts.twiket.com" -j ACCEPT
+# position 100
+COMMIT
+# position 101
+*nat
+# position 102
+:PREROUTING ACCEPT
+# position 103
+:OUTPUT ACCEPT
+# position 104
+:POSTROUTING ACCEPT
+# position 105
+:DOCKER -
+# position 200
+COMMIT
